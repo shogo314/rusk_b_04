@@ -1,6 +1,6 @@
 # 文法一覧
 
-このページはβ03のパーサーが受け付ける文法を説明します。構文はβ02から引き継いでおり、高速化による文法の変更はありません。構文上書けることと、型検査を通ることは別です。例えばブロック内の関数定義は文法上は解析できますが、意味の検査でトップレベル以外の定義を拒否します。実装の原本はリポジトリの `rusk.par` です。
+このページはβ04のパーサーが受け付ける文法を説明します。β04では型付きの無名関数と、式の結果に対する呼び出しを追加しています。構文上書けることと、型検査を通ることは別です。例えばブロック内の関数定義は文法上は解析できますが、意味の検査でトップレベル以外の定義を拒否します。実装の原本はリポジトリの `rusk.par` です。
 
 ## 表記と字句
 
@@ -25,7 +25,7 @@ include struct fn return extern type symbol let in wt
 if else for while loop break continue true false
 ```
 
-`Int`、`Bool`、`Char`、`Str`、`Unit` は標準型名、`Vec` と `Tuple` は処理系が扱う型構築子です。`__add__` などの名前は演算フックにも使うため、通常の変数・関数には説明的な名前を使います。
+`__Rusk` で始まる型名は処理系内部用のため定義できません。`Int`、`Bool`、`Char`、`Str`、`Unit` は標準型名、`Vec` と `Tuple` は処理系が扱う型構築子です。`__add__` などの名前は演算フックにも使うため、通常の変数・関数には説明的な名前を使います。
 
 ## プログラムと文
 
@@ -155,7 +155,8 @@ loop_statement  = "loop" block ;
 比較はビット演算より強いため、ビットを調べるときは `(mask & bit) != 0` と括弧を付けます。`0 <= x < n` は書けません。`0 <= x && x < n` と書きます。シフト・ビット反転・ビット複合代入・`++`・`--`・三項演算子は未実装です。
 
 ```ebnf
-expression = range [ assignment_operator expression ] ;
+expression = lambda | range [ assignment_operator expression ] ;
+lambda     = "(" parameters ")" "=>" expression ;
 range      = logical_or [ ".." logical_or ] ;
 logical_or = logical_and { "||" logical_and } ;
 logical_and = bit_or { "&&" bit_or } ;
@@ -167,7 +168,7 @@ addition   = multiplication { ("+" | "-") multiplication } ;
 multiplication = unary { ("*" | "/" | "%") unary } ;
 unary      = ("+" | "-" | "!") unary | postfix ;
 postfix    = primary { "[" expression "]"
-                    | "." identifier [ "(" expression_list ")" ] } ;
+                    | "." identifier | "(" expression_list ")" } ;
 assignment_operator = ":=" | "=" | "+=" | "-=" | "*=" | "/=" | "%=" ;
 comparison_operator = "==" | "!=" | "<" | "<=" | ">" | ">=" ;
 ```
@@ -176,7 +177,7 @@ comparison_operator = "==" | "!=" | "<" | "<=" | ">" | ">=" ;
 
 ```ebnf
 primary    = array | literal
-           | reference [ "(" expression_list ")" | record_fields ]
+           | reference [ record_fields ]
            | "(" expression [ tuple_tail ] ")" ;
 reference  = identifier [ "::" type_arguments ] ;
 array      = "[" [ expression ( ";" expression | { "," expression } ) ] "]" ;
@@ -201,7 +202,7 @@ literal       = integer_literal | string_literal | character_literal
 | 構造体構築 | `Point { x: 1, y: 2 }` | 全フィールドを名前で指定 |
 | 型引数付きの構築 | `Box::<Int> { value: 1 }` | 型引数を明示して構築 |
 
-関数は値ではないため、`(f)(x)` や関数を返す呼び出しの直後の `(x)` は書けません。型引数付き呼び出しは `f<Int>(x)` ではなく `f::<Int>(x)` です。メソッド形式での明示的な型引数 `a.f::<Int>()` は使えないため、`f::<Int>(a)` と書きます。
+β04では関数を保持する値を呼べるため、`(f)(x)` や `callbacks[0](x)`、`((x: Int) => x + 1)(3)` が使えます。無名関数の引数名と型は明示します。型・捕捉・コピーの規則は [β04の関数と捕捉](beta04.md) を参照してください。型引数付き呼び出しは `f<Int>(x)` ではなく `f::<Int>(x)` です。メソッド形式での明示的な型引数 `a.f::<Int>()` は使えないため、`f::<Int>(a)` と書きます。
 
 ### カンマと括弧の境界
 
@@ -214,7 +215,7 @@ literal       = integer_literal | string_literal | character_literal
 | 型引数・型仮引数 `<Int,>`・`<T,>` | 不可 |
 | タプル型 `(Int, Str,)`・分解 `(a, b,)` | 不可 |
 
-`()`, `(1,)` は値として使えません。`Unit` の値を `()` と表記する構文もありません。
+`()`, `(1,)` は単独の値として使えません。`() => expression` は引数なしの無名関数として使えます。`Unit` の値を `()` と表記する構文もありません。
 
 ## 外部宣言
 

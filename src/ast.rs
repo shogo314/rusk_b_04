@@ -140,6 +140,8 @@ pub enum ExprKind {
     Record(Name, Vec<(Name, Expr)>),
     Var(Name),
     Call(Name, Vec<Expr>),
+    Invoke(Box<Expr>, Vec<Expr>),
+    Lambda(Vec<(Name, Name)>, Box<Expr>),
     Binary(String, Box<Expr>, Box<Expr>),
     Unary(String, Box<Expr>),
     Assign(String, Box<Expr>, Box<Expr>),
@@ -371,6 +373,10 @@ fn list(l: &g::ExprList<'_>) -> Result<Vec<Expr>, String> {
         .collect()
 }
 fn expr(e: &g::Expr<'_>) -> Result<Expr, String> {
+    let e = match e {
+        g::Expr::Lambda(x) => return lambda(&x.lambda),
+        g::Expr::RangeExprOpt(x) => x,
+    };
     let left = range(&e.range)?;
     if let Some(x) = &e.expr_opt {
         let (op, t) = match x.assign_op.as_ref() {
@@ -549,19 +555,19 @@ fn postfix(p: &g::Postfix<'_>) -> Result<Expr, String> {
             },
             g::Suffix::Member(x) => {
                 let n = name(&x.member.identifier);
-                if let Some(call) = &x.member.member_opt {
-                    let mut args = vec![value];
-                    args.extend(list(&call.expr_list)?);
-                    Expr {
-                        span: n.span.clone(),
-                        kind: ExprKind::Call(n, args),
-                    }
-                } else {
-                    Expr {
-                        span: n.span.clone(),
-                        kind: ExprKind::Field(Box::new(value), n),
-                    }
+                Expr {
+                    span: n.span.clone(),
+                    kind: ExprKind::Field(Box::new(value), n),
                 }
+            }
+            g::Suffix::Invoke(x) => {
+                let span = value.span.clone();
+                let args = list(&x.invoke.expr_list)?;
+                let kind = match value.kind {
+                    ExprKind::Var(n) => ExprKind::Call(n, args),
+                    _ => ExprKind::Invoke(Box::new(value), args),
+                };
+                Expr { span, kind }
             }
         };
     }
@@ -615,25 +621,18 @@ fn primary(e: &g::Primary<'_>) -> Result<Expr, String> {
             let n = reference(&x.reference);
             Expr {
                 span: n.span.clone(),
-                kind: if let Some(args) = &x.primary_opt {
-                    match args.primary_tail.as_ref() {
-                        g::PrimaryTail::LParenExprListRParen(call) => {
-                            ExprKind::Call(n, list(&call.expr_list)?)
-                        }
-                        g::PrimaryTail::RecordFields(record) => {
-                            let fields = &record.record_fields;
-                            let values = std::iter::once(fields.field_value.as_ref())
-                                .chain(
-                                    fields
-                                        .record_fields_list
-                                        .iter()
-                                        .map(|f| f.field_value.as_ref()),
-                                )
-                                .map(|f| Ok((name(&f.identifier), expr(&f.expr)?)))
-                                .collect::<Result<_, String>>()?;
-                            ExprKind::Record(n, values)
-                        }
-                    }
+                kind: if let Some(record) = &x.primary_opt {
+                    let fields = &record.record_fields;
+                    let values = std::iter::once(fields.field_value.as_ref())
+                        .chain(
+                            fields
+                                .record_fields_list
+                                .iter()
+                                .map(|f| f.field_value.as_ref()),
+                        )
+                        .map(|f| Ok((name(&f.identifier), expr(&f.expr)?)))
+                        .collect::<Result<_, String>>()?;
+                    ExprKind::Record(n, values)
                 } else {
                     ExprKind::Var(n)
                 },
@@ -657,5 +656,25 @@ fn primary(e: &g::Primary<'_>) -> Result<Expr, String> {
                 span: Span::token(t),
             }
         }
+    })
+}
+
+fn lambda(e: &g::Lambda<'_>) -> Result<Expr, String> {
+    let mut parameters = vec![];
+    if let Some(params) = &e.parameters.parameters_opt {
+        parameters.push((
+            name(&params.parameter.identifier),
+            type_name(&params.parameter.type_name),
+        ));
+        for p in &params.parameters_opt_list {
+            parameters.push((
+                name(&p.parameter.identifier),
+                type_name(&p.parameter.type_name),
+            ));
+        }
+    }
+    Ok(Expr {
+        kind: ExprKind::Lambda(parameters, Box::new(expr(&e.expr)?)),
+        span: Span::token(&e.l_paren),
     })
 }

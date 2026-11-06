@@ -1,7 +1,9 @@
 use crate::ast::{Binding, Expr, ExprKind, Initializer, Name, Span, Stmt};
 use crate::backend::ir::{Body, Call, Instruction, Value};
 use std::collections::{BTreeMap, BTreeSet};
+mod callables;
 mod generics;
+mod higher_order;
 mod records;
 mod tuples;
 
@@ -23,6 +25,12 @@ struct Variable {
 #[derive(Default)]
 pub struct Compiler {
     types: BTreeMap<String, String>,
+    callables: BTreeMap<String, callables::Callable>,
+    function_types: BTreeMap<usize, String>,
+    lambda_types: BTreeMap<String, String>,
+    iterator_types: BTreeMap<String, higher_order::IteratorType>,
+    lambda_counter: usize,
+    current_function: Option<usize>,
     records: BTreeMap<String, records::Record>,
     prepared_records: BTreeSet<String>,
     record_copies: BTreeMap<String, Vec<usize>>,
@@ -92,7 +100,9 @@ impl Compiler {
                     })?;
                 }
                 if let Stmt::Struct(name, parameters, fields) = s {
-                    if matches!(name.text.as_str(), "Vec" | "Tuple" | "Iter") {
+                    if name.text.starts_with("__Rusk")
+                        || matches!(name.text.as_str(), "Vec" | "Tuple" | "Iter")
+                    {
                         return Err(name.span.error("reserved built-in type constructor"));
                     }
                     if !parameters.is_empty() {
@@ -118,6 +128,9 @@ impl Compiler {
                     );
                 }
                 if let Stmt::Type(n, p) = s {
+                    if n.text.starts_with("__Rusk") {
+                        return Err(n.span.error("reserved internal type name"));
+                    }
                     if self.generic_records.contains_key(&n.text) {
                         return Err(n.span.error("duplicate type"));
                     }
@@ -259,7 +272,9 @@ impl Compiler {
             out.push_str(code);
             out.push('\n');
         }
+        out.push_str(&self.lazy_cpp());
         out.push_str(&self.record_cpp());
+        out.push_str(&self.lazy_copy_declarations());
         for f in &self.functions {
             if f.body.is_some() {
                 out.push_str(&self.signature(f));
@@ -279,6 +294,7 @@ impl Compiler {
             }
         }
         out.push_str(&self.record_copy_cpp());
+        out.push_str(&self.lazy_copy_cpp());
         out.push_str("int main() {\n");
         out.push_str(&self.body.cpp(!self.no_optimization));
         out.push_str("return 0;\n}\n");
@@ -300,6 +316,7 @@ impl Compiler {
         format!("{result} {}({})", f.cpp, params.join(", "))
     }
     fn compile_function(&mut self, index: usize) -> Result<(), String> {
+        self.current_function = Some(index);
         let f = self.functions[index].clone();
         let (params, body) = f.body.as_ref().unwrap();
         if f.result != "Unit" && !definitely_returns(body) {
@@ -336,6 +353,7 @@ impl Compiler {
         self.scopes.clear();
         self.body.clear();
         self.return_type = None;
+        self.current_function = None;
         Ok(())
     }
     fn check_type(&mut self, n: &Name) -> Result<(), String> {
@@ -512,7 +530,13 @@ impl Compiler {
         expected: Option<&str>,
         s: &Span,
     ) -> Result<Value, String> {
-        let i = self.resolve(name, &args, expected, s)?.ok_or_else(|| {
+        let resolved = self.resolve(name, &args, expected, s)?;
+        let resolved = if resolved.is_some() {
+            resolved
+        } else {
+            self.higher_order(name, &args, s)?
+        };
+        let i = resolved.ok_or_else(|| {
             s.error(format!(
                 "no matching function '{name}' for ({})",
                 args.iter()
@@ -868,10 +892,15 @@ impl Compiler {
     }
     fn expr(&mut self, e: &Expr, expected: Option<&str>) -> Result<Value, String> {
         match &e.kind {
+            ExprKind::Lambda(parameters, body) => self.lambda(parameters, body, &e.span),
+            ExprKind::Invoke(callee, args) => self.invoke_expression(callee, args, &e.span),
             ExprKind::Tuple(items) => self.tuple_value(items, expected, &e.span),
             ExprKind::Record(name, fields) => self.record_value(name, fields),
             ExprKind::Field(receiver, field) => {
                 let receiver = self.expr(receiver, None)?;
+                if self.callables.contains_key(&receiver.ty) {
+                    return Err(field.span.error("callable environment fields are private"));
+                }
                 let (index, ty) = self.field(&receiver.ty, field)?;
                 Ok(self.emit(&ty, format!("{}->field_{index}", receiver.cpp)))
             }
@@ -946,13 +975,28 @@ impl Compiler {
                 Ok(result)
             }
             ExprKind::Var(n) => {
-                let v = self.find_var(n)?;
+                let Some(v) = self.local_variable(&n.text) else {
+                    return self.function_value(n);
+                };
                 if !v.initialized {
                     return Err(n.span.error("variable used before initialization"));
                 }
                 Ok(self.emit(&v.ty, v.cpp))
             }
             ExprKind::Call(n, args) => {
+                if self
+                    .local_variable(&n.text)
+                    .is_some_and(|v| self.callables.contains_key(&v.ty))
+                {
+                    let callee = self.expr(
+                        &Expr {
+                            kind: ExprKind::Var(n.clone()),
+                            span: n.span.clone(),
+                        },
+                        None,
+                    )?;
+                    return self.invoke_arguments(callee, args, &e.span);
+                }
                 let mut values = vec![];
                 for arg in args {
                     // Use a context only when every remaining overload agrees.

@@ -1,6 +1,6 @@
 # Library Checker の解答例
 
-Ruskで書いた7問・8解答です。`online-judge-tools/verification-helper` が公開テストケースを取得し、Ruskから生成したC++20の実行結果を検証します。公式のジェネレーター・参照解答・チェッカーを使います。
+Ruskで書いた8問・9解答です。`online-judge-tools/verification-helper` が公開テストケースを取得し、Ruskから生成したC++20の実行結果を検証します。公式のジェネレーター・参照解答・チェッカーを使います。
 
 ```bash
 python3 tools/test.py --suite public
@@ -19,3 +19,4 @@ oj-verify run examples/library_checker/unionfind.test.rusk
 | [Static RMQ](https://judge.yosupo.jp/problem/staticrmq) | セグメント木 | [staticrmq.test.rusk](staticrmq.test.rusk) |
 | [Unionfind](https://judge.yosupo.jp/problem/unionfind) | 構造体・経路圧縮とサイズによる併合 | [unionfind.test.rusk](unionfind.test.rusk) |
 | [Z Algorithm](https://judge.yosupo.jp/problem/zalgorithm) | 線形時間の文字列走査 | [zalgorithm.test.rusk](zalgorithm.test.rusk) |
+| [Point Set Range Composite](https://judge.yosupo.jp/problem/point_set_range_composite) | 演算として一次関数の合成を渡す汎用セグメント木 | [point_set_range_composite.test.rusk](point_set_range_composite.test.rusk) |

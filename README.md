@@ -8,17 +8,17 @@
 
 ## 現在の状態
 
-β04は、β03で完成したバッファ入出力・型付き中間表現・基本値の一時結果の確保削減を土台に開発を始めます。β04の追加機能と完成条件はこれから決めます。前段階の範囲は [β03の要件](design/beta03.md) と [実装方式・測定結果](docs/development/beta03.md) に記録しています。
+β04は、β03で完成したバッファ入出力・型付き中間表現・基本値の一時結果の確保削減を土台に開発を始めます。β04では静的な関数の受け渡し・捕捉と、それを使う配列処理・探索・データ構造を実装します。[β04の要件](design/beta04.md) を参照してください。前段階の範囲は [β03の要件](design/beta03.md) と [実装方式・測定結果](docs/development/beta03.md) に記録しています。
 
 Rust と Parol で、競技プログラミングの基本問題を記述できるプロトタイプを実装しています。C++20 に変換し、基本型の入出力、検査付き整数演算、共有・コピー・代入、短絡論理演算、条件分岐、while / for、再帰・オーバーロードを含む関数定義が使えます。
 
 配列は基本型・構造体・タプル・多次元配列に対応し、一括入力、ソート、二分探索を備えます。ASCII 文字列の添字更新・連結・型変換も使えます。配列の合計、ソートと探索、グリッド BFS、再帰による剰余累乗の実行例は [`examples/prototype/`](examples/prototype/) にあります。
 
-プロトタイプの対象範囲と検証手順は [開発ガイド](docs/development/index.md) を参照してください。型引数を持つ関数・構造体の具体化、タプルと分解、`include` によるファイル分割に対応しています。β03ではバッファ入出力と基本値の一時結果の確保削減、比較用の `--no-opt` を追加しています。[実装方式と性能測定](docs/development/beta03.md) を参照してください。ローカル関数、浮動小数点、辞書・集合などは未実装です。設計ノートには検討中・保留中の案も含まれます。
+プロトタイプの対象範囲と検証手順は [開発ガイド](docs/development/index.md) を参照してください。型引数を持つ関数・構造体の具体化、タプルと分解、`include` によるファイル分割に対応しています。β03ではバッファ入出力と基本値の一時結果の確保削減、比較用の `--no-opt` を追加しています。[実装方式と性能測定](docs/development/beta03.md) を参照してください。β04では無名関数の捕捉と静的な受け渡し、遅延map/filter、集計・探索・キー付きソート、優先度付きキュー・汎用セグメント木にも対応します。[文法と捕捉](docs/reference/beta04.md) と [API](docs/library/beta04.md) を参照してください。内側の名前付き関数、浮動小数点、辞書・集合などは未実装です。設計ノートには検討中・保留中の案も含まれます。
 
 [AtCoderの解答例](examples/atcoder/README.md) は100問を収録しています。整数・文字列処理、全探索、ソート、シミュレーション、DP、グリッド処理を使い、公式サンプル279件を `cargo test --locked --test atcoder` で検証します。
 
-[AOJの30問](examples/aoj/README.md) と [Library Checkerの8解答](examples/library_checker/README.md) は、`online-judge-tools/verification-helper` で公開テストケースを取得して検証します。[導入と実行方法](docs/development/verification.md) を参照してください。
+[AOJの34問・36解答](examples/aoj/README.md) と [Library Checkerの9解答](examples/library_checker/README.md) は、`online-judge-tools/verification-helper` で公開テストケースを取得して検証します。[導入と実行方法](docs/development/verification.md) を参照してください。
 
 ## 試す
 

@@ -19,7 +19,7 @@ impl Compiler {
             return Ok(());
         }
         let record = self.records[name].clone();
-        if record.fields.is_empty() {
+        if record.fields.is_empty() && !name.starts_with("__RuskCallable") {
             return Err(record
                 .name
                 .span
@@ -180,6 +180,9 @@ impl Compiler {
     }
 
     pub(super) fn field(&self, ty: &str, name: &Name) -> Result<(usize, String), String> {
+        if self.callables.contains_key(ty) {
+            return Err(name.span.error("callable environment fields are private"));
+        }
         let record = self
             .records
             .get(ty)

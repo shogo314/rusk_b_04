@@ -119,3 +119,7 @@ extern fn Bool(a: Vector) -> Bool {
     cpp_name: "vector_function_1000",
     code: "Obj<bool> vector_function_1000(Obj<NativeVec> a, Loc) { return make_obj<bool>(!a->empty()); }",
 }
+extern fn pop_back(a: Vector) -> Element {
+    cpp_name: "vector_function_35",
+    code: "Obj<NativeElement> vector_function_35(Obj<NativeVec> a,Loc loc){ if(a->empty()) fail(loc,\"pop from empty array\"); auto value=a->back();a->pop_back();++a->version;return value; }",
+}

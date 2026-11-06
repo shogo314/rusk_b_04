@@ -1,6 +1,6 @@
 # AOJ の解答例
 
-今のRuskで素直に書ける基本問題30問です。基本入出力、番兵付きループ、配列・行列、ソート、二分探索、DPを検証します。EOFまで入力する形式や浮動小数点が必要な問題は見送っています。
+今のRuskで書いた34問・36解答です。基本入出力、番兵付きループ、配列・行列、ソート、二分探索、DPに加え、β04の関数の受け渡し・構造体付きDijkstra・セグメント木の境界探索も検証します。EOFまで入力する形式や浮動小数点が必要な問題は見送っています。
 
 `online-judge-tools/verification-helper` がAOJの公開テストケースを取得し、生成したC++20の実行結果を検証します。テストケースの独自コピーは収録しません。
 
@@ -43,3 +43,9 @@ oj-verify run examples/aoj/dpl_1_d.test.rusk
 | [ITP1_7_A](https://onlinejudge.u-aizu.ac.jp/problems/ITP1_7_A) | 関数と条件分岐 | [itp1_7_a.test.rusk](itp1_7_a.test.rusk) |
 | [ITP1_7_B](https://onlinejudge.u-aizu.ac.jp/problems/ITP1_7_B) | 全探索 | [itp1_7_b.test.rusk](itp1_7_b.test.rusk) |
 | [ITP1_7_C](https://onlinejudge.u-aizu.ac.jp/problems/ITP1_7_C) | 行列の集計 | [itp1_7_c.test.rusk](itp1_7_c.test.rusk) |
+| [ALDS1_2_C](https://onlinejudge.u-aizu.ac.jp/problems/ALDS1_2_C) | キー付き安定ソート・map | [alds1_2_c.test.rusk](alds1_2_c.test.rusk) |
+| [ALDS1_4_D](https://onlinejudge.u-aizu.ac.jp/problems/ALDS1_4_D) | 捕捉した条件関数とfirst_true | [alds1_4_d.test.rusk](alds1_4_d.test.rusk) |
+| [DSL_3_A](https://onlinejudge.u-aizu.ac.jp/problems/DSL_3_A) | 汎用セグメント木のmax_right | [dsl_3_a.test.rusk](dsl_3_a.test.rusk) |
+| [DSL_3_A](https://onlinejudge.u-aizu.ac.jp/problems/DSL_3_A) | min_leftによる別解 | [dsl_3_a_min_left.test.rusk](dsl_3_a_min_left.test.rusk) |
+| [GRL_1_A](https://onlinejudge.u-aizu.ac.jp/problems/GRL_1_A) | 構造体と比較関数付き優先度キューによるDijkstra | [grl_1_a.test.rusk](grl_1_a.test.rusk) |
+| [ITP1_4_D](https://onlinejudge.u-aizu.ac.jp/problems/ITP1_4_D) | タプルを蓄積するfoldの別解 | [itp1_4_d_fold.test.rusk](itp1_4_d_fold.test.rusk) |

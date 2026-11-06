@@ -61,6 +61,16 @@ for _ in range(q):
 sys.stdout.write('\\n'.join(out)+'\\n')
 '''
 
+CALLBACK_FOLD_RUSK = 'in n:Int; wt fold((0..n).map((x:Int)=>x*2).filter((x:Int)=>x%3==0),0,(a:Int,b:Int)=>a+b);'
+CALLBACK_FOLD_MANUAL = 'in n:Int; let total:=0;for i in 0..n {let value:=i*2;if value%3==0{total+=value;}}wt total;'
+CALLBACK_FOLD_CPP = '#include <iostream>\nint main(){long long n,total=0;std::cin>>n;for(long long i=0;i<n;++i){auto x=i*2;if(x%3==0)total+=x;}std::cout<<total<<"\\n";}'
+CALLBACK_FOLD_PY = 'n=int(input());total=0\nfor i in range(n):\n x=i*2\n if x%3==0:total+=x\nprint(total)\n'
+CALLBACK_SORT_RUSK = 'struct Item{key:Int;id:Int;}in n:Int;let values:Vec<Item>:=[];for i in 0..n{in key:Int;values.push_back(Item{key:key,id:copy(i)});}values.sort_by_key((x:Item)=>x.key);for x in values{wt x.key,x.id;}'
+CALLBACK_SORT_MANUAL = 'in n:Int;let values:Vec<(Int,Int)>:=[];for i in 0..n{in key:Int;values.push_back((key,copy(i)));}values.sort();for x in values{wt x[0],x[1];}'
+CALLBACK_SORT_CPP = '#include <bits/stdc++.h>\nint main(){std::ios::sync_with_stdio(false);std::cin.tie(nullptr);int n;std::cin>>n;std::vector<std::pair<long long,long long>> a(n);for(int i=0;i<n;++i){std::cin>>a[i].first;a[i].second=i;}std::stable_sort(a.begin(),a.end(),[](auto x,auto y){return x.first<y.first;});for(auto [key,id]:a)std::cout<<key<<" "<<id<<"\\n";}'
+CALLBACK_SORT_PY = 'import sys\nit=iter(map(int,sys.stdin.buffer.read().split()));n=next(it);a=sorted(((next(it),i) for i in range(n)),key=lambda x:x[0]);sys.stdout.write("".join(str(k)+" "+str(i)+"\\n" for k,i in a))\n'
+MANUAL_RUSK = {'callback_fold':CALLBACK_FOLD_MANUAL,'callback_sort':CALLBACK_SORT_MANUAL}
+
 def version(command):
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     return (result.stdout or result.stderr).strip().splitlines()[0]
@@ -73,7 +83,7 @@ def main():
     parser.add_argument('--compare-no-opt', action='store_true', help='also check and measure the same compiler with --no-opt')
     parser.add_argument('--repeats', type=int, default=3)
     parser.add_argument('--output', type=Path)
-    parser.add_argument('--case', action='append', choices=['range_sum','integer_input','integer_output','sort_search','grid_bfs','fenwick'], help='run only selected cases (repeatable)')
+    parser.add_argument('--case', action='append', choices=['range_sum','integer_input','integer_output','sort_search','grid_bfs','fenwick','callback_fold','callback_sort'], help='run only selected cases (repeatable)')
     args = parser.parse_args()
     if args.repeats < 1:
         parser.error('--repeats must be positive')
@@ -85,7 +95,10 @@ def main():
     fenwick_n, fenwick_q = 100_000, 100_000
     operations = [f"0 {(i*7919)%fenwick_n} {i%100}" if i%2==0 else f"1 0 {(i*12347)%fenwick_n}" for i in range(fenwick_q)]
     fenwick_data = (f"{fenwick_n} {fenwick_q}\n"+'\n'.join(operations)+'\n').encode()
+    sort_data = ('100000\n'+' '.join(str((i*7919)%97) for i in range(100_000))+'\n').encode()
     jobs = [
+        ('callback_fold', CALLBACK_FOLD_RUSK, CALLBACK_FOLD_CPP, CALLBACK_FOLD_PY, b'1000000\n', 'N=1,000,000'),
+        ('callback_sort', CALLBACK_SORT_RUSK, CALLBACK_SORT_CPP, CALLBACK_SORT_PY, sort_data, 'N=100,000'),
         ('integer_input', INPUT_RUSK, INPUT_CPP, INPUT_PY, integer_data, 'N=1,000,000'),
         ('integer_output', OUTPUT_RUSK, OUTPUT_CPP, OUTPUT_PY, b'200000\n', 'N=200,000'),
         ('fenwick', FENWICK_RUSK, FENWICK_CPP, FENWICK_PY, fenwick_data, 'N=100,000; Q=100,000'),
@@ -112,7 +125,12 @@ def main():
                 subprocess.run([str(args.compiler.resolve()),'compile',str(temp/'main.rusk'),'--no-opt','-o',str(temp/'plain.cpp')],check=True)
                 subprocess.run(['g++','-std=c++20','-O2',str(temp/'plain.cpp'),'-o',str(temp/'plain')],check=True)
                 commands['Rusk no-opt']=[str(temp/'plain')]
-            if args.baseline_compiler:
+            if name in MANUAL_RUSK:
+                (temp/'manual.rusk').write_text(MANUAL_RUSK[name])
+                subprocess.run([str(args.compiler.resolve()),'compile',str(temp/'manual.rusk'),'-o',str(temp/'manual.cpp')],check=True)
+                subprocess.run(['g++','-std=c++20','-O2',str(temp/'manual.cpp'),'-o',str(temp/'manual')],check=True)
+                commands['Rusk manual']=[str(temp/'manual')]
+            if args.baseline_compiler and name not in MANUAL_RUSK:
                 subprocess.run([str(args.baseline_compiler.resolve()),'compile',str(temp/'main.rusk'),'-o',str(temp/'previous.cpp')],check=True)
                 subprocess.run(['g++','-std=c++20','-O2',str(temp/'previous.cpp'),'-o',str(temp/'previous')],check=True)
                 commands['Rusk baseline']=[str(temp/'previous')]
@@ -136,7 +154,7 @@ def main():
             for label in commands:
                 row['seconds'][label]=statistics.median(samples[label])
                 row['samples'][label]=samples[label]
-            if args.baseline_compiler:
+            if 'Rusk baseline' in row['seconds']:
                 row['speedup_vs_baseline']=row['seconds']['Rusk baseline']/row['seconds']['Rusk']
             results.append(row)
     report = {'utc':datetime.datetime.now(datetime.timezone.utc).isoformat(), 'platform':platform.platform(),

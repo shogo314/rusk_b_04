@@ -338,6 +338,18 @@ fn substitute_name(name: &mut Name, bindings: &BTreeMap<String, String>) {
 }
 fn substitute_expr(expr: &mut Expr, bindings: &BTreeMap<String, String>) {
     match &mut expr.kind {
+        ExprKind::Lambda(parameters, body) => {
+            for (_, ty) in parameters {
+                substitute_name(ty, bindings);
+            }
+            substitute_expr(body, bindings);
+        }
+        ExprKind::Invoke(callee, args) => {
+            substitute_expr(callee, bindings);
+            for arg in args {
+                substitute_expr(arg, bindings);
+            }
+        }
         ExprKind::Array(items) | ExprKind::Tuple(items) => {
             for item in items {
                 substitute_expr(item, bindings);

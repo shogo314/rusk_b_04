@@ -1,6 +1,8 @@
 fn main() {
     println!("cargo:rerun-if-changed=rusk.par");
     parol::build::Builder::with_explicit_output_dir(std::env::var("OUT_DIR").unwrap())
+        .max_lookahead(3)
+        .expect("valid lookahead")
         .grammar_file("rusk.par")
         .parser_output_file("rusk_parser.rs")
         .actions_output_file("rusk_grammar_trait.rs")

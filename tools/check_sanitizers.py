@@ -9,6 +9,21 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = [
+    ('''let text:="abc";let c:=text[1];let f:=()=>c;
+let independent=f;c:='Q';text:="new";let held:=f();held='Z';
+wt f(),independent(),text;
+let values:=[1,2,3,4];let n:=0;
+let it:=values.filter((x:Int)=>x%2==0).map((x:Int)=>x+(n+=1));
+let copy_it=it;wt it.to_vec(),n;wt copy_it.to_vec(),n;
+''',b'',b'Z b new\n3 6 2\n3 6 2\n'),
+    (f'include {json.dumps(str(ROOT/"examples/beta04/library/priority_queue.rusk"))};\n'
+     f'include {json.dumps(str(ROOT/"examples/beta04/library/segment_tree.rusk"))};\n'
+     + '''let queue:=PriorityQueue([3,1,2],(a:Int,b:Int)=>a<b);
+let detached=queue;wt queue.pop(),queue.pop(),detached.pop();
+let seg:=SegTree(["a","b","c"],"",(a:Str,b:Str)=>a+b);
+let changed=seg;changed.set(1,"X");wt seg.prod(0,3),changed.prod(0,3);
+wt seg.max_right(0,(s:Str)=>s.len()<=2),seg.min_left(3,(s:Str)=>s.len()<=2);
+''',b'',b'1 2 1\nabc aXc\n2 1\n'),
     ('''let s:="abc";
 { let c:=s[0]; c='z'; s="XYZ"; wt c; }
 s.push_back('!'); wt s;

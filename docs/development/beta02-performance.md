@@ -18,6 +18,7 @@
 cargo build --release --locked
 python3 tools/benchmark.py --compiler target/release/rusk \
   --baseline-compiler /path/to/beta01/target/release/rusk \
+  --case range_sum --case sort_search --case grid_bfs \
   --repeats 7 --output /tmp/rusk-beta02-benchmark.json
 ```
 
